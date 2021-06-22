@@ -62,3 +62,7 @@ def ImamWebView():
 @app.route('/Whatsappenpoint')
 def Whatsappenpoint():
     pass # Ismail
+    
+if __name__ == '__main__':
+    database.create_all()
+    application.run()
