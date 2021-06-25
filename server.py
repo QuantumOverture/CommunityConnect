@@ -51,9 +51,43 @@ class QuestionDatabase(database.Model):
             self.AnsweredOrUnAnswered = False # False -> Unanswered True -> Answered
             
             
-@app.route('/')
-def LoginLandingPage(): # Kabir
-    return render_template() # Returning the html file we got from the front end team
+@app.route("/login", methods=["GET", "POST"])
+def login():
+    if form.validate_on_submit():
+        user = User.query.get(form.username.data)
+        if user:
+            if bcrypt.check_password_hash(user.Password, form.Password.data):
+                user.authenticated = True
+                db.session.add(user)
+                db.session.commit()
+                login_user(user, remember=True)
+                return redirect(url_for("bull.reports"))
+    return render_template("login.html", form=form)
+
+@app.route("/register", methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('home'))
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        hashed_password = bcrypt.generate_password_hash(form.Password.data).decode('utf-8')
+        user = User(username=form.username.data, password=hashed_password)
+        db.session.add(user)
+        db.session.commit()
+        flash('Your account has been created! You are now able to log in', 'success')
+        return redirect(url_for('login'))
+    return render_template('register.html', title='Register', form=form)
+
+@app.route("/logout", methods=["GET"])
+@login_required
+def logout():
+    """Logout the current user."""
+    user = current_user
+    user.authenticated = False
+    db.session.add(user)
+    db.session.commit()
+    logout_user()
+    return render_template("logout.html")
     
 @app.route('/ImamWebView')
 def ImamWebView():
