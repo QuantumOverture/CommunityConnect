@@ -49,11 +49,13 @@ class QuestionDatabase(database.Model):
     SenderNumber = database.Column(database.String(100))
     ImamUsername = database.Column(database.String(100))
     AnsweredOrUnAnswered = database.Column(database.Boolean)
+    ImamAnswer = database.Column(database.String(500))
     def __init__(self, QuestionText,SenderNumber, ImamUsername):
             self.QuestionText = QuestionText
             self.SenderNumber = SenderNumber # In this format: "+1 4078763333"
             self.ImamUsername = ImamUsername
             self.AnsweredOrUnAnswered = False # False -> Unanswered True -> Answered
+            self.ImamAnswer = ""
             
             
 @app.route('/')
@@ -101,18 +103,43 @@ def Whatsappenpoint():
                               from_='whatsapp:+14155238886',
                               to='whatsapp:{}'.format(UserNumber)
                           )
-        elif Body[0] == "annoucements":
-            pass
+        elif Body[0] == "announcements":
+            MainData = MainImamData.query.filter_by(MasjidLocation = " ".join(Body[1:-1])).all()
+            if len(MainData) == 0:
+                message = client.messages.create(
+                              body="No masjids in this area :( ",
+                              from_='whatsapp:+14155238886',
+                              to='whatsapp:{}'.format(UserNumber)
+                          )
+            ResultData = ""
+            for Item in Annoucements.query.filter_by(ImamOwnership = MainData[int(Body[-1])-1].UserName).all():
+                ResultData += Item.AnnouncementText+"\n"
+            if ResultData == "":
+                message = client.messages.create(
+                              body="No annoucements for this Imam",
+                              from_='whatsapp:+14155238886',
+                              to='whatsapp:{}'.format(UserNumber)
+                          )
+            else:
+                message = client.messages.create(
+                              body=ResultData,
+                              from_='whatsapp:+14155238886',
+                              to='whatsapp:{}'.format(UserNumber)
+                          )
         elif Body[0] == "ask":
             pass
         elif Body[0] == "inbox":
             pass
         else:
+            message = client.messages.create(
+                              body="Invalid command[valid commands: list,ask,inbox,announcements]",
+                              from_='whatsapp:+14155238886',
+                              to='whatsapp:{}'.format(UserNumber)
+                          )
             return "Failure - POST"
 
         return "Success - POST"
     else:
-        # Dummy data to get started
         database.session.add(MainImamData("Dr.Ali","securepassword","San Jose"))
         database.session.add(Annoucements("Dr.Ali","Zuhr is at 1:30 Today."))
         database.session.commit()
