@@ -52,7 +52,7 @@ class QuestionDatabase(database.Model):
     ImamAnswer = database.Column(database.String(500))
     def __init__(self, QuestionText,SenderNumber, ImamUsername):
             self.QuestionText = QuestionText
-            self.SenderNumber = SenderNumber # In this format: "+1 4078763333"
+            self.SenderNumber = SenderNumber # In this format: "+14078763333"
             self.ImamUsername = ImamUsername
             self.AnsweredOrUnAnswered = False # False -> Unanswered True -> Answered
             self.ImamAnswer = ""
@@ -127,9 +127,50 @@ def Whatsappenpoint():
                               to='whatsapp:{}'.format(UserNumber)
                           )
         elif Body[0] == "ask":
-            pass
+            ListNumIndex = 0
+            for item in Body:
+                if item.isnumeric():
+                    break
+                ListNumIndex += 1
+            print(ListNumIndex)
+            MainData = MainImamData.query.filter_by(MasjidLocation = " ".join(Body[1:ListNumIndex])).all()
+            if len(MainData) == 0:
+                message = client.messages.create(
+                              body="No masjids in this area :( ",
+                              from_='whatsapp:+14155238886',
+                              to='whatsapp:{}'.format(UserNumber)
+                          )
+            
+            database.session.add(QuestionDatabase(" ".join(Body[ListNumIndex+1:]),UserNumber, MainData[int(Body[ListNumIndex])-1].UserName))
+            database.session.commit()
+            print(QuestionDatabase.query.all())
         elif Body[0] == "inbox":
-            pass
+            AllQuestions = QuestionDatabase.query.all()
+            MainData = MainImamData.query.filter_by(MasjidLocation = " ".join(Body[1:-1])).all()
+            if len(MainData) == 0:
+                message = client.messages.create(
+                              body="No masjids in this area :( ",
+                              from_='whatsapp:+14155238886',
+                              to='whatsapp:{}'.format(UserNumber)
+                          )
+            
+            ResultData = ""
+            for item in AllQuestions:
+                if item.SenderNumber == UserNumber and item.ImamUsername == MainData[int(Body[-1]) -1].UserName:
+                    ResultData += "Question:{}  Answer:{} \n".format(item.QuestionText,item.ImamAnswer)
+            
+            if ResultData == "":
+                message = client.messages.create(
+                              body="Inbox empty",
+                              from_='whatsapp:+14155238886',
+                              to='whatsapp:{}'.format(UserNumber)
+                          )
+            else:
+                message = client.messages.create(
+                              body=ResultData,
+                              from_='whatsapp:+14155238886',
+                              to='whatsapp:{}'.format(UserNumber)
+                          )
         else:
             message = client.messages.create(
                               body="Invalid command[valid commands: list,ask,inbox,announcements]",
