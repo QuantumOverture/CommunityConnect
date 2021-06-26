@@ -11,10 +11,10 @@ app = Flask(__name__)
 
 app.config ['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///MainData.sqlite3'
 
-SQLALCHEMY_BINDS = {
+app.config['SQLALCHEMY_BINDS'] = {
     'ImamData': 'sqlite:///ImamData.sqlite3',
-    'Annoucements': 'sqlite:///Annoucements.sqlite3',
-    'QuestionDatabase': 'sqlite///Questions.sqlite3'
+    'Annoucements':'sqlite:///Annoucements.sqlite3',
+    'QuestionDatabase': 'sqlite:///Questions.sqlite3'
 }
 
 database = SQLAlchemy(app)
@@ -24,7 +24,7 @@ class MainImamData(database.Model):
     UserName = database.Column(database.String(100))
     Password = database.Column(database.String(100))
     MasjidLocation = database.Column(database.String(100))
-
+    
     def __init__(self, Username, Password, MasjidLocation):
         self.UserName = Username
         self.Password = generate_password_hash(Password)
@@ -36,7 +36,7 @@ class Annoucements(database.Model):
     ImamOwnership = database.Column(database.String(100))
     AnnouncementText = database.Column(database.String(500))
     InactiveOrActive = database.Column(database.Boolean)
-
+    
     def __init__(self, ImamOwnership, AnnouncementText):
             self.ImamOwnership = ImamOwnership
             self.AnnouncementText = AnnouncementText
@@ -54,12 +54,12 @@ class QuestionDatabase(database.Model):
             self.SenderNumber = SenderNumber # In this format: "+1 4078763333"
             self.ImamUsername = ImamUsername
             self.AnsweredOrUnAnswered = False # False -> Unanswered True -> Answered
-
-
+            
+            
 @app.route('/')
 def LoginLandingPage(): # Kabir
     return render_template() # Returning the html file we got from the front end team
-
+    
 @app.route('/ImamWebView')
 def ImamWebView():
     pass # Kabir
@@ -69,7 +69,7 @@ def ImamWebView():
 
 @app.route('/Whatsappenpoint',methods=["GET","POST"])
 def Whatsappenpoint():
-
+    
     # Creditentials for API
     account_sid = os.environ['TWILIO_ACCOUNT_SID']
     auth_token = os.environ['TWILIO_AUTH_TOKEN']
@@ -82,7 +82,25 @@ def Whatsappenpoint():
         UserNumber = UserMessage.get('From')[UserMessage.get('From').index(":")+1:]
         print(UserNumber)
         if Body[0] == "list":
-            pass
+            MainData = MainImamData.query.filter_by(MasjidLocation = " ".join(Body[1:])).all()
+            if len(MainData) == 0:
+                message = client.messages.create(
+                              body="No masjids in this area :( ",
+                              from_='whatsapp:+14155238886',
+                              to='whatsapp:{}'.format(UserNumber)
+                          )
+                          
+            ListData = ""
+            ItemList = 1
+            for Item in MainData:
+                ListData += "{}. ImamUserName:{} MasjidLocation:{}".format(ItemList,Item.UserName,Item.MasjidLocation)
+                ItemList += 1
+            print(ListData)   
+            message = client.messages.create(
+                              body=ListData,
+                              from_='whatsapp:+14155238886',
+                              to='whatsapp:{}'.format(UserNumber)
+                          )
         elif Body[0] == "annoucements":
             pass
         elif Body[0] == "ask":
@@ -90,12 +108,17 @@ def Whatsappenpoint():
         elif Body[0] == "inbox":
             pass
         else:
-            return "Failure"
+            return "Failure - POST"
 
-        return "Success"
+        return "Success - POST"
     else:
-        return "GET requests are not requested"
+        # Dummy data to get started
+        database.session.add(MainImamData("Dr.Ali","securepassword","San Jose"))
+        database.session.add(Annoucements("Dr.Ali","Zuhr is at 1:30 Today."))
+        database.session.commit()
+        return "Success - GET"
 
 if __name__ == '__main__':
     database.create_all()
     app.run(port=8080)
+
