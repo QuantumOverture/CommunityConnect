@@ -1,6 +1,7 @@
 from flask import Flask,redirect,render_template
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
+from flaskblog import app, db, bcrypt
+from flask import render_template, url_for, flash, redirect, request, abort
 
 app = Flask(__name__)
 
@@ -89,9 +90,14 @@ def logout():
     logout_user()
     return render_template("logout.html")
     
-@app.route('/ImamWebView')
+@app.route('/ImamWebView/<string:UserName>')
 def ImamWebView():
-    pass # Kabir
+    user = User.query.filter_by(username=UserName).first_or_404()
+    annoucements = Annoucements.query.filter_by(ImamUsername=user)
+    questions = QuestionDatabase.query.filter_by(ImamUsername=user)
+
+    
+    pass f"User('{annoucements:annoucements}', '{questions:questions}')"
 
 @app.route('/Whatsappenpoint')
 def Whatsappenpoint():
